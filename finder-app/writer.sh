@@ -8,8 +8,12 @@ elif [ "$2" = "" ]; then
 	exit 1
 fi
 
-if ! [ -d /tmp/aeld-data ]; then
-	mkdir -p /tmp/aeld-data
+dir=$1
+dir="${dir%/*}"
+
+if ! [ -d $dir ]; then
+	echo "Making $dir"
+	mkdir -p $dir
 fi
 
 echo $2 > $1
