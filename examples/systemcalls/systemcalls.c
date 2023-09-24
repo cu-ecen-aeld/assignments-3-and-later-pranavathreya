@@ -1,4 +1,9 @@
 #include "systemcalls.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -17,7 +22,11 @@ bool do_system(const char *cmd)
  *   or false() if it returned a failure
 */
 
-    return true;
+	int ret = system(cmd);
+	if (ret >= 0)
+		return true;
+	else
+		return false;
 }
 
 /**
@@ -59,9 +68,34 @@ bool do_exec(int count, ...)
  *
 */
 
-    va_end(args);
+	int status;
+	pid_t pid;
 
-    return true;
+	printf("do_exec: ");
+	for (int i=0; i<count; ++i) printf("%s ", command[i]);
+	putchar('\n');
+
+	pid = fork ();
+	if (pid == -1)
+		return false;
+	else if (pid == 0) {
+		char* argv[count-1];
+		for (i=1; i<count; i++) {
+			argv[i-1] = command[i];
+		}
+		execv(command[0], (char** const) argv);
+		exit(-1);
+	}
+
+	if (waitpid (pid, &status, 0) == -1)
+		return false;
+	else if (WIFEXITED (status)) {
+		printf("do_exec: exit status %d\n", WEXITSTATUS (status));
+		return (WEXITSTATUS (status) == 0) ? true : false;
+	}
+	va_end(args);
+
+	return true;
 }
 
 /**
@@ -92,6 +126,41 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+	int status;
+	pid_t pid;
+	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (fd < 0) { perror("open"); abort(); }
+
+	pid = fork ();
+	if (pid == -1) {
+		printf("-1\n");
+		return false;
+	}
+	else if (pid == 0) {
+		if (dup2(fd, 1) < 0) {
+			printf("-2\n");
+			return false;
+		}
+		close(fd);
+		char* argv[count-1];
+		for (i=1; i<count; i++) {
+			argv[i-1] = command[i];
+		}
+		execv(command[0], (char** const) argv);
+		printf("1\n");
+		return false;
+	}
+	else
+		close(fd);
+
+	if (waitpid (pid, &status, 0) == -1) {
+		printf("2\n");
+		return false;
+	}
+	else if (WIFEXITED (status)) {
+		printf("3\n");
+		return true;
+	}
 
     va_end(args);
 
