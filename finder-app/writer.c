@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
 		THROW_ERR("create error\n");
 	}
 
+	syslog(LOG_DEBUG, "writing %s to %s\n", ftext, fname);
 	nr = write(fd, ftext, strlen(ftext));
 	if (nr == -1) {
 		THROW_ERR("write error\n");
