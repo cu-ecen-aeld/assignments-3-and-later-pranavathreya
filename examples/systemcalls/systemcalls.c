@@ -1,4 +1,5 @@
 #include "systemcalls.h"
+#include <stdlib.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,8 +17,8 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+	system(cmd);
+	return true;
 }
 
 /**
@@ -38,16 +39,19 @@ bool do_exec(int count, ...)
 {
     va_list args;
     va_start(args, count);
-    char * command[count+1];
+    char * execv_cmd;
+    char * execv_args[count];
     int i;
-    for(i=0; i<count; i++)
+    
+    execv_cmd = va_arg(args, char *);
+    printf("execv_cmd: %s\n", execv_cmd);
+
+
+    for(i=0; i<count-1; i++)
     {
-        command[i] = va_arg(args, char *);
+        execv_args[i] = va_arg(args, char *);
     }
-    command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+    execv_args[i] = NULL;
 
 /*
  * TODO:
@@ -58,6 +62,17 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+
+    //pid_t pid;
+    //    
+    //pid = fork ();
+    //if (pid == -1)
+    //        perror ("fork");
+
+    //if (!pid) {
+    //        int ret;
+    //        
+    //        ret = execv (command[0], 
 
     va_end(args);
 
