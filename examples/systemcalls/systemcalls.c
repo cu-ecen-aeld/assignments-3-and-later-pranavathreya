@@ -1,6 +1,9 @@
 #include "systemcalls.h"
 #include <stdlib.h>
-
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fcntl.h>
+	
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -37,22 +40,20 @@ bool do_system(const char *cmd)
 
 bool do_exec(int count, ...)
 {
-    va_list args;
-    va_start(args, count);
-    char * execv_cmd;
-    char * execv_args[count];
-    int i;
-    
-    execv_cmd = va_arg(args, char *);
-    printf("execv_cmd: %s\n", execv_cmd);
+	va_list args;
+	va_start(args, count);
+	char * execv_cmd;
+	char * execv_args[count];
+	int i;
 
+	execv_cmd = va_arg(args, char *);
+	printf("execv_cmd: %s\n", execv_cmd);
 
-    for(i=0; i<count-1; i++)
-    {
-        execv_args[i] = va_arg(args, char *);
-    }
-    execv_args[i] = NULL;
-
+	for(i=0; i<count-1; i++) {
+		execv_args[i] = va_arg(args, char *);
+		printf("execv_args[%d]: %s\n", i,  execv_args[i]);
+	}
+	execv_args[i] = NULL;
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
@@ -63,20 +64,50 @@ bool do_exec(int count, ...)
  *
 */
 
-    //pid_t pid;
-    //    
-    //pid = fork ();
-    //if (pid == -1)
-    //        perror ("fork");
+	int status;
+	pid_t pid;
+	    
+	pid = fork ();
+	if (pid == -1)
+		perror ("fork");
 
-    //if (!pid) {
-    //        int ret;
-    //        
-    //        ret = execv (command[0], 
+	if (!pid) {
+		int ret;
+		 
+		ret = execv (execv_cmd, execv_args);
+		if (ret == -1) {
+			perror ("execv");
+			exit (EXIT_FAILURE);
+		}
+	}
 
-    va_end(args);
+	pid = waitpid (pid, &status, 0);
+	if (pid == -1)
+		perror("wait");
+	printf("child pid=%d\n", pid);
 
-    return true;
+	if (WIFEXITED (status))
+		printf ("Normal termination with exit status=%d\n",
+				WEXITSTATUS (status));
+
+	if (WIFSIGNALED (status))
+		printf("Killed by signal=%d%s\n",
+				WTERMSIG (status),
+				WCOREDUMP (status) ? " (dumped core)" : "");
+
+	if (WIFSTOPPED (status))
+		printf ("Stopped by signal=%d\n",
+				WSTOPSIG (status));
+
+	if (WIFCONTINUED (status))
+		printf ("Continued\n");
+		
+	va_end(args);
+
+	if (status == 0)
+		return true;
+	else
+		return false;
 }
 
 /**
@@ -86,19 +117,20 @@ bool do_exec(int count, ...)
 */
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
-    va_list args;
-    va_start(args, count);
-    char * command[count+1];
-    int i;
-    for(i=0; i<count; i++)
-    {
-        command[i] = va_arg(args, char *);
-    }
-    command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
+	va_list args;
+	va_start(args, count);
+	char * execv_cmd;
+	char * execv_args[count];
+	int i;
 
+	execv_cmd = va_arg(args, char *);
+	printf("execv_cmd: %s\n", execv_cmd);
+
+	for(i=0; i<count-1; i++) {
+		execv_args[i] = va_arg(args, char *);
+		printf("execv_args[%d]: %s\n", i,  execv_args[i]);
+	}
+	execv_args[i] = NULL;
 
 /*
  * TODO
@@ -107,8 +139,58 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+	int status;
+	int pid;
+	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (fd < 0) {
+		perror("open");
+		abort();
+	}
 
-    va_end(args);
+	switch (pid = fork()) {
+		case -1: perror("fork"); abort();
+		case 0:
+			if (dup2(fd, 1) < 0) {
+			    perror("dup2");
+			    abort();
+			}
+			close(fd);
+		    
+			execv(execv_cmd, execv_args);
+		    
+			perror("execvp");
+			abort();
+		default:
+			close(fd);
+	}
 
-    return true;
+  	pid = waitpid (pid, &status, 0);
+	if (pid == -1)
+		perror("wait");
+	printf("pid=%d\n", pid);
+
+	if (WIFEXITED (status))
+		printf ("Normal termination with exit status=%d\n",
+				WEXITSTATUS (status));
+
+	if (WIFSIGNALED (status))
+		printf("Killed by signal=%d%s\n",
+				WTERMSIG (status),
+				WCOREDUMP (status) ? " (dumped core)" : "");
+
+	if (WIFSTOPPED (status))
+		printf ("Stopped by signal=%d\n",
+				WSTOPSIG (status));
+
+	if (WIFCONTINUED (status))
+		printf ("Continued\n");
+
+    	va_end(args);
+    
+    	if (status!=0)
+		return false;
+	else
+		return true;
 }
+    
+    
