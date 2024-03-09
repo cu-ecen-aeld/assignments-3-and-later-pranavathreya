@@ -116,18 +116,14 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 {
 	va_list args;
 	va_start(args, count);
-	char * execv_cmd;
-	char * execv_args[count];
+	char * command[count+1];
 	int i;
 
-	execv_cmd = va_arg(args, char *);
-	printf("execv_cmd: %s\n", execv_cmd);
-
-	for(i=0; i<count-1; i++) {
-		execv_args[i] = va_arg(args, char *);
-		printf("execv_args[%d]: %s\n", i,  execv_args[i]);
+	for(i=0; i<count; i++)
+	{
+	    command[i] = va_arg(args, char *);
 	}
-	execv_args[i] = NULL;
+	command[count] = NULL;
 
 /*
  * TODO
@@ -153,7 +149,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 			}
 			close(fd);
 		    
-			execv(execv_cmd, execv_args);
+			execv(command[0], command);
 		    
 			perror("execvp");
 			abort();
