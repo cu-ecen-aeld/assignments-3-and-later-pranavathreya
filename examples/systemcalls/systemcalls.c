@@ -42,18 +42,15 @@ bool do_exec(int count, ...)
 {
 	va_list args;
 	va_start(args, count);
-	char * execv_cmd;
-	char * execv_args[count];
+	char * command[count+1];
 	int i;
 
-	execv_cmd = va_arg(args, char *);
-	printf("execv_cmd: %s\n", execv_cmd);
-
-	for(i=0; i<count-1; i++) {
-		execv_args[i] = va_arg(args, char *);
-		printf("execv_args[%d]: %s\n", i,  execv_args[i]);
+	for(i=0; i<count; i++)
+	{
+		command[i] = va_arg(args, char *);
+		printf("command[%d]: %s\n", i,  command[i]);
 	}
-	execv_args[i] = NULL;
+	command[count] = NULL;
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
@@ -73,8 +70,8 @@ bool do_exec(int count, ...)
 
 	if (!pid) {
 		int ret;
-		 
-		ret = execv (execv_cmd, execv_args);
+		
+		ret = execv (command[0], command);
 		if (ret == -1) {
 			perror ("execv");
 			exit (EXIT_FAILURE);
