@@ -1,3 +1,4 @@
+#!/bin/sh
 export USAGE_STR="usage: finder-app/finder.sh filesdir searchstr"
 
 if [ "$1" = "" ]; then
