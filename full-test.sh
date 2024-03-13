@@ -17,8 +17,6 @@ logfile=test.sh.log
 exec > >(tee -i -a "$logfile") 2> >(tee -i -a "$logfile" >&2)
 
 echo "Running test with user $(whoami)"
-echo "find . -name aarch64-linux-gnu: "$(find . -name \"*aarch64-linux-gnu*\")
-exit
 
 set +e
 
