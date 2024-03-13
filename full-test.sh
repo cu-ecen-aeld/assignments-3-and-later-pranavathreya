@@ -17,7 +17,7 @@ logfile=test.sh.log
 exec > >(tee -i -a "$logfile") 2> >(tee -i -a "$logfile" >&2)
 
 echo "Running test with user $(whoami)"
-echo "ls /: "$(ls /)
+echo "ls /usr: "$(ls /)
 exit
 
 set +e
