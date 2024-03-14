@@ -101,7 +101,6 @@ cp ${COURSEDIR}/finder-app/finder-test.sh \
        ${COURSEDIR}/finder-app/finder.sh \
 	${COURSEDIR}/finder-app/Makefile \
       ${COURSEDIR}/finder-app/autorun-qemu.sh ${OUTDIR}/rootfs/home
-cp ${COURSEDIR}/finder-app/writer ${OUTDIR}/rootfs/usr/bin
 
 # TODO: Make device nodes
 sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
