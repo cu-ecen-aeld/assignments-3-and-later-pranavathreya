@@ -41,9 +41,9 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- mrproper # clean
     make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- defconfig # defconfig
     make -j8 ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu-
-else
-	cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
 fi
+
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
 
 echo "Adding the Image in outdir"
 
