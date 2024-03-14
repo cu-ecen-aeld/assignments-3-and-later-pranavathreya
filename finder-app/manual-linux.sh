@@ -88,13 +88,13 @@ ${CROSS_COMPILE}readelf -a busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
-cp /__w/assignments-3-and-later-pranavathreya/assignments-3-and-later-pranavathreya/bin/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
-cp /__w/assignments-3-and-later-pranavathreya/assignments-3-and-later-pranavathreya/bin/libm.so.6 ${OUTDIR}/rootfs/lib
-cp /__w/assignments-3-and-later-pranavathreya/assignments-3-and-later-pranavathreya/bin/libresolv.so.2 ${OUTDIR}/rootfs/lib
-cp /__w/assignments-3-and-later-pranavathreya/assignments-3-and-later-pranavathreya/bin/libc.so.6 ${OUTDIR}/rootfs/lib
+COURSEDIR=/__w/assignments-3-and-later-pranavathreya/assignments-3-and-later-pranavathreya
+cp ${COURSEDIR}/bin/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
+cp ${COURSEDIR}/bin/libm.so.6 ${OUTDIR}/rootfs/lib
+cp ${COURSEDIR}/bin/libresolv.so.2 ${OUTDIR}/rootfs/lib
+cp ${COURSEDIR}/bin/libc.so.6 ${OUTDIR}/rootfs/lib
 mkdir ${OUTDIR}/rootfs/home/conf
 
-COURSEDIR=${HOME}/coursera/assignment-2-pranavathreya
 cp ${COURSEDIR}/conf/* ${OUTDIR}/rootfs/home/conf
 cp ${COURSEDIR}/finder-app/finder-test.sh \
        	${COURSEDIR}/finder-app/writer.c \
