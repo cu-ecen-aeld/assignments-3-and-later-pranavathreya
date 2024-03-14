@@ -88,10 +88,10 @@ ${CROSS_COMPILE}readelf -a busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
-#cp /usr/aarch64-linux-gnu/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
-#cp /usr/aarch64-linux-gnu/lib/libm.so.6 ${OUTDIR}/rootfs/lib
-#cp /usr/aarch64-linux-gnu/lib/libresolv.so.2 ${OUTDIR}/rootfs/lib
-#cp /usr/aarch64-linux-gnu/lib/libc.so.6 ${OUTDIR}/rootfs/lib
+cp /usr/aarch64-linux-gnu/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
+cp /usr/aarch64-linux-gnu/lib/libm.so.6 ${OUTDIR}/rootfs/lib
+cp /usr/aarch64-linux-gnu/lib/libresolv.so.2 ${OUTDIR}/rootfs/lib
+cp /usr/aarch64-linux-gnu/lib/libc.so.6 ${OUTDIR}/rootfs/lib
 mkdir ${OUTDIR}/rootfs/home/conf
 
 COURSEDIR=${HOME}/coursera/assignment-2-pranavathreya

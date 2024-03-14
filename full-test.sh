@@ -17,6 +17,8 @@ logfile=test.sh.log
 exec > >(tee -i -a "$logfile") 2> >(tee -i -a "$logfile" >&2)
 
 echo "Running test with user $(whoami)"
+echo "pwd: "$(pwd)
+exit
 
 set +e
 
