@@ -19,7 +19,6 @@ exec > >(tee -i -a "$logfile") 2> >(tee -i -a "$logfile" >&2)
 echo "Running test with user $(whoami)"
 echo "pwd: "$(pwd)
 echo "ls: " $(ls)
-exit
 
 set +e
 
