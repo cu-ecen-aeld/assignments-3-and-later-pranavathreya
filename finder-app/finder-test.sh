@@ -66,4 +66,4 @@ if [ $? -eq 0 ]; then
 else
 	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
 	exit 1
-fiTARGET_DIR
+fi
