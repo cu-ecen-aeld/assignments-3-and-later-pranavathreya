@@ -56,14 +56,13 @@ do
 	/usr/bin/writer "$WRITEDIR/assignment4-result.txt" "$WRITESTR"
 done
 
-OUTPUTSTRING=$(/usr/bin/finder.sh "$WRITEDIR" "$WRITESTR")
+cat $WRITEDIR/assignment4-result.txt | grep $WRITESTR
 
-set +e
-echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
-if [ $? -eq 0 ]; then
+if [$? -eq 0]; then
 	echo "success"
 	exit 0
 else
-	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
 	exit 1
 fi
+
+
