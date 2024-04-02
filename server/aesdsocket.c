@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "read_line.h"
+
+#define BUF_SIZE 32768 
 
 typedef struct NameInfo
 {
@@ -45,7 +50,7 @@ void _getNameInfo(struct sockaddr* ai_addr, socklen_t ai_addrlen,
 			nameInfo->serv, NI_MAXSERV, 0);
 	if (s!=0) {
 		syslog(LOG_ERR, "_getNameInfo: getnameinfo failed: %s\n", gai_strerror(s));
-		syslog(LOG_ERR, "sa_family: %d\nsa_data: %s\n", ai_addr->sa_family,
+		syslog(LOG_ERR, "sa_family: %d\n sa_data: %s\n", ai_addr->sa_family,
 				ai_addr->sa_data);
 		exit(EXIT_FAILURE);
 	}
@@ -55,7 +60,7 @@ int getSocket(int _bind, struct addrinfo *result)
 {
 	struct addrinfo *rp;
 	int sfd;
-	NameInfo nameInfo;
+	//NameInfo nameInfo;
 	
 	for (rp=result; rp!=NULL; rp=rp->ai_next)
 	{
@@ -82,9 +87,9 @@ int getSocket(int _bind, struct addrinfo *result)
 		exit(EXIT_FAILURE);
 	}
 	
-	_getNameInfo(rp->ai_addr, rp->ai_addrlen, &nameInfo);
-	syslog(LOG_INFO, "getSocket: successfully %s to: %s:%s\n",
-		       _bind ? "bound" : "connected",	nameInfo.host, nameInfo.serv);
+	//_getNameInfo(rp->ai_addr, rp->ai_addrlen, &nameInfo);
+	//syslog(LOG_INFO, "getSocket: successfully %s to: %s:%s\n",
+	//	       _bind ? "bound" : "connected",	nameInfo.host, nameInfo.serv);
 
 	return sfd;
 	
@@ -103,23 +108,137 @@ int bindOrConnectToAddress(char* host, char* port,
 	return sfd;
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	struct sockaddr sa;
+	int fd, nr;
+	FILE *fp;
+	char *fname = "/var/tmp/aesdsocketdata";
+	char *hostname = "localhost";
+	char *port = "9000";
+	char *buf = (char *) malloc(BUF_SIZE);
+	if (buf == NULL) {
+		syslog(LOG_ERR, "Failed to allocate memory for buf");
+		exit(EXIT_FAILURE);
+	}
+	//char *bufcpy;
+	struct sockaddr clientAddr;
 	socklen_t sl;
+	//NameInfo nameInfo;
+	pid_t pid;
+	int count;
 
-	int lfd = bindOrConnectToAddress("localhost", "9000", 1);
+	openlog("aesdsocket", 0, LOG_USER);
 
+	int lfd = bindOrConnectToAddress(hostname, port, 1);
+	if (argc > 1) {
+		if (strcmp(argv[1], "-d") == 0) {
+			pid = fork();
+			if (pid == -1) {
+				syslog(LOG_ERR, "Failed to fork(): %s", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			else if (pid != 0) {
+				syslog(LOG_INFO, "Successfully forked: %d", pid);
+				exit(EXIT_SUCCESS);
+			}
+
+			if (setsid() == -1) {
+				syslog(LOG_ERR, "Failed to create new session and group: %s", 
+						strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+
+			if (chdir("/") == -1) {
+				syslog(LOG_ERR, "Failed to changed to root dir: %s", 
+						strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+
+			open("/dev/null", O_RDWR);
+			dup(0);
+			dup(1);
+		}
+	}
+
+	if (listen(lfd, 0) == -1) {
+		syslog(LOG_ERR, "Failure in listen(): %s", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	syslog(LOG_INFO, "Listening on %s:%s", hostname, port);
+	
+
+	fd = open(fname, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	if (fd == -1) {
+		syslog(LOG_ERR, "Failed truncating %s: %s", fname, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	close(fd);
+	syslog(LOG_INFO, "Successfully truncated %s", fname);
+	
 	int cfd; /* connection fd */
 	for (;;) {
-		cfd = accept(lfd, &sa, &sl);
+		cfd = accept(lfd, &clientAddr, &sl);
 		if (cfd == -1) {
-			//syslog(LOG_ERR, "Failure in accept(): %s", strerror(errno));
-			printf("%s\n", strerror(errno));
+			syslog(LOG_ERR, "Failure in accept(): %s", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		//_getNameInfo(&clientAddr, sl, &nameInfo);
+		//syslog(LOG_INFO, "Accepted connection from %s:%s\n", 
+		//		nameInfo.host, nameInfo.serv);
+
+		memset(buf, 0, BUF_SIZE);
+		nr = readLine(cfd, buf, BUF_SIZE);
+		if (nr == -1) {
+			syslog(LOG_ERR, "Failed to recieve.");
+				//nameInfo.host, nameInfo.serv, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
+		//bufcpy = buf;
+		//while (( *bufcpy != '\n' )) {
+		//	syslog(LOG_INFO, "%c", *bufcpy++);
+		//}
+		//
+		//*(++bufcpy) = '\0';
+		
+		count = strlen(buf);
+		fd = open(fname, O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
+		if (fd == -1) {
+			syslog(LOG_ERR, "Failed to open %s: %s", fname, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		syslog(LOG_INFO, "Opened file %s", fname);
+
+		nr = write(fd, buf, count);
+		if (nr == -1) {
+			syslog(LOG_ERR, "Failed to write %s to %s: %s", 
+					buf, fname, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		else if (nr != count) {
+			syslog(LOG_ERR, "Possible failed write.");
+			exit(EXIT_FAILURE);
+		}
+		syslog(LOG_INFO, "Wrote msg to %s", fname);
+		close(fd);
+
+		fp = fopen(fname, "r");
+
+		memset(buf, 0, BUF_SIZE);
+		count = 0;
+		while (fgets(buf, BUF_SIZE, fp) != NULL) {
+			send(cfd, buf, strlen(buf), 0); 
+			syslog(LOG_INFO, "Sent %d %s",
+				       	count++, buf);
+		}
+		fclose(fp);
 	}
+
+
+
+	free(buf);
+	close(lfd);
+	close(cfd);
 
 	return 0;
 }
