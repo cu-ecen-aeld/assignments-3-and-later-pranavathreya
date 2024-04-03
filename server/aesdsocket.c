@@ -127,7 +127,7 @@ int bindOrConnectToAddress(char* host, char* port,
 
 int main(int argc, char **argv)
 {
-	int fd, nr, lfd, cfd;
+	int fd, nr;
 	FILE *fp;
 	char *fname = "/var/tmp/aesdsocketdata";
 	char *hostname = "localhost";
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 	//	exit(EXIT_FAILURE);
 	//}
 
-	lfd = bindOrConnectToAddress(hostname, port, 1);
+	int lfd = bindOrConnectToAddress(hostname, port, 1);
 	if (argc > 1) {
 		if (strcmp(argv[1], "-d") == 0) {
 			pid = fork();
@@ -201,6 +201,7 @@ int main(int argc, char **argv)
 	close(fd);
 	syslog(LOG_INFO, "Successfully truncated %s", fname);
 	
+	int cfd;
 	for (;;) {
 		cfd = accept(lfd, &clientAddr, &sl);
 		//clientAddr_in = (struct socketaddr_in *) clientAddr;
