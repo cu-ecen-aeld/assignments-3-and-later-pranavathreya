@@ -7,6 +7,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <signal.h>
+
 #include "read_line.h"
 
 #define BUF_SIZE 32768 
@@ -108,9 +112,22 @@ int bindOrConnectToAddress(char* host, char* port,
 	return sfd;
 }
 
+static void signal_handler (int signo)
+{
+	if (signo == SIGINT)
+		syslog(LOG_INFO, "Caught SIGINT, exiting");
+	else if (signo == SIGTERM)
+		syslog(LOG_INFO, "Caught SIGTERM, exiting");
+	else {
+		syslog(LOG_ERR, "Unexpected signal");
+		exit(EXIT_FAILURE);
+	}
+	exit (EXIT_SUCCESS);
+}
+
 int main(int argc, char **argv)
 {
-	int fd, nr;
+	int fd, nr, lfd, cfd;
 	FILE *fp;
 	char *fname = "/var/tmp/aesdsocketdata";
 	char *hostname = "localhost";
@@ -120,16 +137,25 @@ int main(int argc, char **argv)
 		syslog(LOG_ERR, "Failed to allocate memory for buf");
 		exit(EXIT_FAILURE);
 	}
-	//char *bufcpy;
 	struct sockaddr clientAddr;
+	//struct sockaddr_in *clientAddr_in;
 	socklen_t sl;
-	//NameInfo nameInfo;
 	pid_t pid;
 	int count;
 
 	openlog("aesdsocket", 0, LOG_USER);
 
-	int lfd = bindOrConnectToAddress(hostname, port, 1);
+	if (signal (SIGINT, signal_handler) == SIG_ERR) {
+		syslog(LOG_ERR, "Cannot handle SIGIN!");
+		exit(EXIT_FAILURE);
+	}
+
+	if (signal (SIGTERM, signal_handler) == SIG_ERR) {
+		syslog(LOG_ERR, "Cannot handle SIGTERM!");
+		exit(EXIT_FAILURE);
+	}
+
+	lfd = bindOrConnectToAddress(hostname, port, 1);
 	if (argc > 1) {
 		if (strcmp(argv[1], "-d") == 0) {
 			pid = fork();
@@ -175,31 +201,22 @@ int main(int argc, char **argv)
 	close(fd);
 	syslog(LOG_INFO, "Successfully truncated %s", fname);
 	
-	int cfd; /* connection fd */
 	for (;;) {
 		cfd = accept(lfd, &clientAddr, &sl);
+		//clientAddr_in = (struct socketaddr_in *) clientAddr;
 		if (cfd == -1) {
 			syslog(LOG_ERR, "Failure in accept(): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		//_getNameInfo(&clientAddr, sl, &nameInfo);
-		//syslog(LOG_INFO, "Accepted connection from %s:%s\n", 
-		//		nameInfo.host, nameInfo.serv);
+		syslog(LOG_INFO, "Accepted connection from %s\n", 
+				clientAddr.sa_data);
 
 		memset(buf, 0, BUF_SIZE);
 		nr = readLine(cfd, buf, BUF_SIZE);
 		if (nr == -1) {
-			syslog(LOG_ERR, "Failed to recieve.");
-				//nameInfo.host, nameInfo.serv, strerror(errno));
+			syslog(LOG_ERR, "Failed to recieve from %s", clientAddr.sa_data);
 			exit(EXIT_FAILURE);
 		}
-
-		//bufcpy = buf;
-		//while (( *bufcpy != '\n' )) {
-		//	syslog(LOG_INFO, "%c", *bufcpy++);
-		//}
-		//
-		//*(++bufcpy) = '\0';
 		
 		count = strlen(buf);
 		fd = open(fname, O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
@@ -232,13 +249,14 @@ int main(int argc, char **argv)
 				       	count++, buf);
 		}
 		fclose(fp);
+		close(cfd);
+		syslog(LOG_INFO, "Closed connection from %s", clientAddr.sa_data);
 	}
 
 
 
 	free(buf);
 	close(lfd);
-	close(cfd);
 
 	return 0;
 }
