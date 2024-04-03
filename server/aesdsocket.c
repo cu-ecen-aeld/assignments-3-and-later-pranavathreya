@@ -112,18 +112,18 @@ int bindOrConnectToAddress(char* host, char* port,
 	return sfd;
 }
 
-//static void signal_handler (int signo)
-//{
-//	if (signo == SIGINT)
-//		syslog(LOG_INFO, "Caught SIGINT, exiting");
-//	else if (signo == SIGTERM)
-//		syslog(LOG_INFO, "Caught SIGTERM, exiting");
-//	else {
-//		syslog(LOG_ERR, "Unexpected signal");
-//		exit(EXIT_FAILURE);
-//	}
-//	exit (EXIT_SUCCESS);
-//}
+static void signal_handler (int signo)
+{
+	if (signo == SIGINT)
+		syslog(LOG_INFO, "Caught SIGINT, exiting");
+	else if (signo == SIGTERM)
+		syslog(LOG_INFO, "Caught SIGTERM, exiting");
+	else {
+		syslog(LOG_ERR, "Unexpected signal");
+		exit(EXIT_FAILURE);
+	}
+	exit (EXIT_SUCCESS);
+}
 
 int main(int argc, char **argv)
 {
@@ -145,15 +145,15 @@ int main(int argc, char **argv)
 
 	openlog("aesdsocket", 0, LOG_USER);
 
-	//if (signal (SIGINT, signal_handler) == SIG_ERR) {
-	//	syslog(LOG_ERR, "Cannot handle SIGIN!");
-	//	exit(EXIT_FAILURE);
-	//}
+	if (signal (SIGINT, signal_handler) == SIG_ERR) {
+		syslog(LOG_ERR, "Cannot handle SIGIN!");
+		exit(EXIT_FAILURE);
+	}
 
-	//if (signal (SIGTERM, signal_handler) == SIG_ERR) {
-	//	syslog(LOG_ERR, "Cannot handle SIGTERM!");
-	//	exit(EXIT_FAILURE);
-	//}
+	if (signal (SIGTERM, signal_handler) == SIG_ERR) {
+		syslog(LOG_ERR, "Cannot handle SIGTERM!");
+		exit(EXIT_FAILURE);
+	}
 
 	lfd = bindOrConnectToAddress(hostname, port, 1);
 	if (argc > 1) {
