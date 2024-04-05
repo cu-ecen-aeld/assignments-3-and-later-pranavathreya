@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	FILE *fp;
 	char *fname = "/var/tmp/aesdsocketdata";
 	char *hostname = "localhost";
-	char *port = "9000";
+	char *port;
 	char *buf = (char *) malloc(BUF_SIZE);
 	if (buf == NULL) {
 		syslog(LOG_ERR, "Failed to allocate memory for buf");
@@ -132,7 +132,6 @@ int main(int argc, char **argv)
 
 	openlog("aesdsocket", 0, LOG_USER);
 
-	int lfd = bindOrConnectToAddress(hostname, port, 1);
 	if (argc > 1) {
 		if (strcmp(argv[1], "-d") == 0) {
 			pid = fork();
@@ -163,6 +162,14 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (argc > 2) {
+		port = argv[2];
+	}
+	else {
+		port = "9000";
+	}
+
+	int lfd = bindOrConnectToAddress(hostname, port, 1);
 	if (listen(lfd, 0) == -1) {
 		syslog(LOG_ERR, "Failure in listen(): %s", strerror(errno));
 		exit(EXIT_FAILURE);
