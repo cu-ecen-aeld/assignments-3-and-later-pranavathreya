@@ -170,7 +170,7 @@ int main(int argc, char **argv)
 	}
 
 	int lfd = bindOrConnectToAddress(hostname, port, 1);
-	if (listen(lfd, 0) == -1) {
+	if (listen(lfd, 128) == -1) {
 		syslog(LOG_ERR, "Failure in listen(): %s", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
