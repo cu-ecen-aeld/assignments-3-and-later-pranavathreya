@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	int fd, nr;
 	FILE *fp;
 	char *fname = "/var/tmp/aesdsocketdata";
-	char *hostname = "localhost";
+	char *hostname = "0.0.0.0";
 	char *port;
 	char *buf = (char *) malloc(BUF_SIZE);
 	if (buf == NULL) {
