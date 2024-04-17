@@ -116,17 +116,15 @@ int main(int argc, char **argv)
 	int fd, nr;
 	FILE *fp;
 	char *fname = "/var/tmp/aesdsocketdata";
-	char *hostname = "0.0.0.0";
+	char *hostname;
 	char *port;
 	char *buf = (char *) malloc(BUF_SIZE);
 	if (buf == NULL) {
 		syslog(LOG_ERR, "Failed to allocate memory for buf");
 		exit(EXIT_FAILURE);
 	}
-	//char *bufcpy;
 	struct sockaddr clientAddr;
 	socklen_t sl;
-	//NameInfo nameInfo;
 	pid_t pid;
 	int count;
 
@@ -163,7 +161,14 @@ int main(int argc, char **argv)
 	}
 
 	if (argc > 2) {
-		port = argv[2];
+		hostname = argv[2];
+	}
+	else {
+		hostname = "0.0.0.0";
+	}
+
+	if (argc > 3) {
+		port = argv[3];
 	}
 	else {
 		port = "9000";
