@@ -1,24 +1,4 @@
-#include <string.h>
-#include <sys/socket.h>
-#include <syslog.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include "read_line.h"
-
-#define BUF_SIZE 32768 
-
-typedef struct NameInfo
-{
-	char host[NI_MAXHOST];
-	char serv[NI_MAXSERV];
-} NameInfo;
+#include "aesdsocket.h"
 
 void getAddressInfo(char* host, char* port,
 		struct addrinfo** result)
@@ -44,20 +24,20 @@ void getAddressInfo(char* host, char* port,
 	}
 }
 
-void _getNameInfo(struct sockaddr* ai_addr, socklen_t ai_addrlen,
-		NameInfo* nameInfo)
-{
-	int s;
-	s = getnameinfo(ai_addr, ai_addrlen,
-			nameInfo->host, NI_MAXHOST,
-			nameInfo->serv, NI_MAXSERV, 0);
-	if (s!=0) {
-		syslog(LOG_ERR, "_getNameInfo: getnameinfo failed: %s\n", gai_strerror(s));
-		syslog(LOG_ERR, "sa_family: %d\n sa_data: %s\n", ai_addr->sa_family,
-				ai_addr->sa_data);
-		exit(EXIT_FAILURE);
-	}
-}
+//void _getNameInfo(struct sockaddr* ai_addr, socklen_t ai_addrlen,
+//		NameInfo* nameInfo)
+//{
+//	int s;
+//	s = getnameinfo(ai_addr, ai_addrlen,
+//			nameInfo->host, NI_MAXHOST,
+//			nameInfo->serv, NI_MAXSERV, 0);
+//	if (s!=0) {
+//		syslog(LOG_ERR, "_getNameInfo: getnameinfo failed: %s\n", gai_strerror(s));
+//		syslog(LOG_ERR, "sa_family: %d\n sa_data: %s\n", ai_addr->sa_family,
+//				ai_addr->sa_data);
+//		exit(EXIT_FAILURE);
+//	}
+//}
 
 int getSocket(int _bind, struct addrinfo *result)
 {
@@ -113,20 +93,13 @@ int bindOrConnectToAddress(char* host, char* port,
 
 int main(int argc, char **argv)
 {
-	int fd, nr;
-	FILE *fp;
-	char *fname = "/var/tmp/aesdsocketdata";
+	int fd;
 	char *hostname;
 	char *port;
-	char *buf = (char *) malloc(BUF_SIZE);
-	if (buf == NULL) {
-		syslog(LOG_ERR, "Failed to allocate memory for buf");
-		exit(EXIT_FAILURE);
-	}
+	
 	struct sockaddr clientAddr;
 	socklen_t sl;
 	pid_t pid;
-	int count;
 
 	openlog("aesdsocket", 0, LOG_USER);
 
@@ -182,13 +155,13 @@ int main(int argc, char **argv)
 	syslog(LOG_INFO, "Listening on %s:%s", hostname, port);
 	
 
-	fd = open(fname, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	fd = open(FNAME, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (fd == -1) {
-		syslog(LOG_ERR, "Failed truncating %s: %s", fname, strerror(errno));
+		syslog(LOG_ERR, "Failed truncating %s: %s", FNAME, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	close(fd);
-	syslog(LOG_INFO, "Successfully truncated %s", fname);
+	syslog(LOG_INFO, "Successfully truncated %s", FNAME);
 	
 	int cfd; /* connection fd */
 	for (;;) {
@@ -197,63 +170,22 @@ int main(int argc, char **argv)
 			syslog(LOG_ERR, "Failure in accept(): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		//_getNameInfo(&clientAddr, sl, &nameInfo);
-		//syslog(LOG_INFO, "Accepted connection from %s:%s\n", 
-		//		nameInfo.host, nameInfo.serv);
 
-		memset(buf, 0, BUF_SIZE);
-		nr = readLine(cfd, buf, BUF_SIZE);
-		if (nr == -1) {
-			syslog(LOG_ERR, "Failed to recieve.");
-				//nameInfo.host, nameInfo.serv, strerror(errno));
-			exit(EXIT_FAILURE);
+		switch (fork()) {
+			case -1:
+				syslog(LOG_ERR, "Can't create child: %s", strerror(errno));
+				close(cfd);
+				break;	// Might be temporary, listen for next connection
+			
+			case 0: 				// Child
+				close(lfd);			// Unneeded copy of lfd
+				handleRequest(cfd, fd);
+				exit(EXIT_SUCCESS);
+			default: 				// Parent
+				close(cfd);			// cfd copied over to child
+				break;				// Listen for next
 		}
-
-		//bufcpy = buf;
-		//while (( *bufcpy != '\n' )) {
-		//	syslog(LOG_INFO, "%c", *bufcpy++);
-		//}
-		//
-		//*(++bufcpy) = '\0';
-		
-		count = strlen(buf);
-		fd = open(fname, O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
-		if (fd == -1) {
-			syslog(LOG_ERR, "Failed to open %s: %s", fname, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		syslog(LOG_INFO, "Opened file %s", fname);
-
-		nr = write(fd, buf, count);
-		if (nr == -1) {
-			syslog(LOG_ERR, "Failed to write %s to %s: %s", 
-					buf, fname, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		else if (nr != count) {
-			syslog(LOG_ERR, "Possible failed write.");
-			exit(EXIT_FAILURE);
-		}
-		syslog(LOG_INFO, "Wrote msg to %s", fname);
-		close(fd);
-
-		fp = fopen(fname, "r");
-
-		memset(buf, 0, BUF_SIZE);
-		count = 0;
-		while (fgets(buf, BUF_SIZE, fp) != NULL) {
-			send(cfd, buf, strlen(buf), 0); 
-			syslog(LOG_INFO, "Sent %d %s",
-				       	count++, buf);
-		}
-		fclose(fp);
 	}
-
-
-
-	free(buf);
-	close(lfd);
-	close(cfd);
 
 	return 0;
 }
