@@ -1,4 +1,5 @@
 #include "aesdsocket.h"
+#include <pthread.h>
 
 void getAddressInfo(char* host, char* port,
 		struct addrinfo** result)
@@ -24,26 +25,10 @@ void getAddressInfo(char* host, char* port,
 	}
 }
 
-//void _getNameInfo(struct sockaddr* ai_addr, socklen_t ai_addrlen,
-//		NameInfo* nameInfo)
-//{
-//	int s;
-//	s = getnameinfo(ai_addr, ai_addrlen,
-//			nameInfo->host, NI_MAXHOST,
-//			nameInfo->serv, NI_MAXSERV, 0);
-//	if (s!=0) {
-//		syslog(LOG_ERR, "_getNameInfo: getnameinfo failed: %s\n", gai_strerror(s));
-//		syslog(LOG_ERR, "sa_family: %d\n sa_data: %s\n", ai_addr->sa_family,
-//				ai_addr->sa_data);
-//		exit(EXIT_FAILURE);
-//	}
-//}
-
 int getSocket(int _bind, struct addrinfo *result)
 {
 	struct addrinfo *rp;
 	int sfd;
-	//NameInfo nameInfo;
 	
 	for (rp=result; rp!=NULL; rp=rp->ai_next)
 	{
@@ -70,10 +55,6 @@ int getSocket(int _bind, struct addrinfo *result)
 		exit(EXIT_FAILURE);
 	}
 	
-	//_getNameInfo(rp->ai_addr, rp->ai_addrlen, &nameInfo);
-	//syslog(LOG_INFO, "getSocket: successfully %s to: %s:%s\n",
-	//	       _bind ? "bound" : "connected",	nameInfo.host, nameInfo.serv);
-
 	return sfd;
 	
 }
@@ -96,10 +77,11 @@ int main(int argc, char **argv)
 	int fd;
 	char *hostname;
 	char *port;
-	
 	struct sockaddr clientAddr;
 	socklen_t sl;
 	pid_t pid;
+	pthread_t thing1;
+	struct files f;
 
 	openlog("aesdsocket", 0, LOG_USER);
 
@@ -164,28 +146,22 @@ int main(int argc, char **argv)
 	syslog(LOG_INFO, "Successfully truncated %s", FNAME);
 	
 	int cfd; /* connection fd */
+	f.count = 1;
+	f.descriptors = (int*) malloc(sizeof(int) * f.count);
 	for (;;) {
 		cfd = accept(lfd, &clientAddr, &sl);
+		f.descriptors[0] = cfd;
 		if (cfd == -1) {
 			syslog(LOG_ERR, "Failure in accept(): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
-		switch (fork()) {
-			case -1:
-				syslog(LOG_ERR, "Can't create child: %s", strerror(errno));
-				close(cfd);
-				break;	// Might be temporary, listen for next connection
-			
-			case 0: 				// Child
-				close(lfd);			// Unneeded copy of lfd
-				handleRequest(cfd, fd);
-				exit(EXIT_SUCCESS);
-			default: 				// Parent
-				close(cfd);			// cfd copied over to child
-				break;				// Listen for next
-		}
+		syslog(LOG_INFO, "Creating thread");
+		pthread_create(&thing1, NULL, handleRequest, &f);
+		syslog(LOG_INFO, "Created thread");
+		pthread_join(thing1, NULL);
 	}
 
+	free(f.descriptors);
 	return 0;
 }
